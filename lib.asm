@@ -110,18 +110,18 @@ print_int:
 ; Return 1 if the zero-terminated strings in rdi and rsi are equal, else 0.
 string_equals:
     xor rcx, rcx
-.loop:
+..@string_equals_loop:
     mov dl, [rdi + rcx]
     cmp dl, [rsi + rcx]
-    jne .not_equal
+    jne ..@string_equals_not_equal
     test dl, dl
-    je .equal
+    je ..@string_equals_equal
     inc rcx
-    jmp .loop
-.equal:
+    jmp ..@string_equals_loop
+..@string_equals_equal:
     mov rax, 1
     ret
-.not_equal:
+..@string_equals_not_equal:
     xor rax, rax
 .loop:
     mov dl, [rdi]
