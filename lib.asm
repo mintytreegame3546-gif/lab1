@@ -109,6 +109,19 @@ print_int:
 
 ; Return 1 if the zero-terminated strings in rdi and rsi are equal, else 0.
 string_equals:
+    xor rcx, rcx
+.loop:
+    mov dl, [rdi + rcx]
+    cmp dl, [rsi + rcx]
+    jne .not_equal
+    test dl, dl
+    je .equal
+    inc rcx
+    jmp .loop
+.equal:
+    mov rax, 1
+    ret
+.not_equal:
     xor rax, rax
 .loop:
     mov dl, [rdi]
@@ -145,18 +158,19 @@ read_char:
 ; Read one whitespace-delimited word into rdi (a buffer of rsi bytes).
 ; Return its address and length in rax/rdx, or zero in rax if it does not fit.
 read_word:
-    sub rsp, 40
-    mov [rsp], rdi
-    mov [rsp + 8], rsi
-    xor rax, rax
-    mov [rsp + 16], rax
-    test rsi, rsi
+    push r12
+    push r13
+    push r14
+    mov r12, rdi
+    mov r13, rsi
+    xor r14, r14
+    test r13, r13
     jz .fail
-    mov byte [rdi], 0
+    mov byte [r12], 0
 .skip_whitespace:
     call read_char
     test rax, rax
-    jz .success
+    jz .fail
     cmp al, ' '
     je .skip_whitespace
     cmp al, 9
@@ -164,15 +178,11 @@ read_word:
     cmp al, 10
     je .skip_whitespace
 .read_word:
-    mov rcx, [rsp + 16]
-    mov r8, [rsp + 8]
-    lea r9, [rcx + 1]
-    cmp r9, r8
+    lea r8, [r14 + 1]
+    cmp r8, r13
     jae .fail
-    mov r8, [rsp]
-    mov [r8 + rcx], al
-    inc rcx
-    mov [rsp + 16], rcx
+    mov [r12 + r14], al
+    inc r14
     call read_char
     test rax, rax
     jz .success
@@ -183,15 +193,19 @@ read_word:
     cmp al, 10
     jne .read_word
 .success:
-    mov rdx, [rsp + 16]
-    mov rax, [rsp]
+    mov rdx, r14
+    mov rax, r12
     mov byte [rax + rdx], 0
-    add rsp, 40
+    pop r14
+    pop r13
+    pop r12
     ret
 .fail:
     xor rax, rax
     xor rdx, rdx
-    add rsp, 40
+    pop r14
+    pop r13
+    pop r12
     ret
 
 ; Parse an unsigned decimal integer at rdi.  Return value in rax and digit count in rdx.
@@ -214,35 +228,36 @@ parse_uint:
 
 ; Parse a signed decimal integer at rdi.  Return value in rax and consumed length in rdx.
 parse_int:
-    xor rax, rax
-    xor rdx, rdx
+    sub rsp, 24
     xor r8, r8
     cmp byte [rdi], '-'
-    jne .loop
+    je .negative
+    cmp byte [rdi], '+'
+    jne .parse
     mov r8, 1
     inc rdi
-.loop:
-    movzx rcx, byte [rdi + rdx]
-    cmp rcx, '0'
-    jb .finish
-    cmp rcx, '9'
-    ja .finish
-    imul rax, rax, 10
-    sub rcx, '0'
-    add rax, rcx
-    inc rdx
-    jmp .loop
-.finish:
+    jmp .parse
+.negative:
+    mov r8, -1
+    inc rdi
+.parse:
+    mov [rsp], r8
+    call parse_uint
     test rdx, rdx
     jz .failure
-    test r8, r8
-    jz .done
+    cmp qword [rsp], -1
+    jne .sign_consumed
     neg rax
+.sign_consumed:
+    cmp qword [rsp], 0
+    je .done
     inc rdx
 .done:
+    add rsp, 24
     ret
 .failure:
     xor rax, rax
+    add rsp, 24
     ret
 
 ; Copy rdi to the rsi buffer of rdx bytes, including its terminator.
