@@ -123,6 +123,18 @@ string_equals:
     ret
 .not_equal:
     xor rax, rax
+.loop:
+    mov dl, [rdi]
+    cmp dl, [rsi]
+    jne .done
+    test dl, dl
+    je .equal
+    inc rdi
+    inc rsi
+    jmp .loop
+.equal:
+    mov rax, 1
+.done:
     ret
 
 ; Read one byte from stdin, or return zero on EOF/error.
