@@ -60,8 +60,9 @@ print_newline:
 
 ; Write the unsigned integer in rdi in decimal notation.
 print_uint:
-    sub rsp, 32
+    sub rsp, 40
     lea rsi, [rsp + 32]
+    mov byte [rsi], 0
     mov rax, rdi
     mov r8, 10
     xor rcx, rcx
@@ -82,10 +83,9 @@ print_uint:
     jnz .divide
     mov rdx, rcx
 .write:
-    mov rax, 1
-    mov rdi, 1
-    syscall
-    add rsp, 32
+    mov rdi, rsi
+    call print_string
+    add rsp, 40
     ret
 
 ; Write the signed integer in rdi in decimal notation.
